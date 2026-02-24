@@ -29,9 +29,20 @@ const DiscussionForum = ({ eventId, isOrganizer }) => {
         finally { setLoading(false); }
     }, [eventId]);
 
-    // Socket.IO setup
+    // Track processed message IDs to prevent duplicates from StrictMode double-mount
+    const processedMsgIds = useRef(new Set());
+    // Notification ref
+    const [notification, setNotification] = useState(null);
+
+    // Socket.IO setup — with StrictMode-safe cleanup
     useEffect(() => {
         loadMessages();
+
+        // Disconnect any existing socket before creating new one
+        if (socketRef.current) {
+            socketRef.current.disconnect();
+            socketRef.current = null;
+        }
 
         const token = localStorage.getItem('token');
         const socket = io('https://felicity-backend-vqz2.onrender.com', { auth: { token } });
@@ -42,6 +53,15 @@ const DiscussionForum = ({ eventId, isOrganizer }) => {
         });
 
         socket.on('newMessage', (msg) => {
+            // StrictMode-safe deduplication using a ref
+            if (processedMsgIds.current.has(msg._id)) return;
+            processedMsgIds.current.add(msg._id);
+            // Prevent set from growing indefinitely
+            if (processedMsgIds.current.size > 500) {
+                const arr = [...processedMsgIds.current];
+                processedMsgIds.current = new Set(arr.slice(-200));
+            }
+
             setMessages((prev) => {
                 if (msg.parentId) {
                     // It's a reply — update replies state (deduplicate)
@@ -55,8 +75,16 @@ const DiscussionForum = ({ eventId, isOrganizer }) => {
                         m._id === msg.parentId ? { ...m, replyCount: (m.replyCount || 0) + 1 } : m
                     );
                 }
-                // Check if already exists
+                // Check if already exists in messages
                 if (prev.some((m) => m._id === msg._id)) return prev;
+
+                // Show notification for messages from other users
+                const senderName = msg.userId?.firstName || msg.userId?.organizerName || 'Someone';
+                if (msg.userId?._id !== user?.id) {
+                    setNotification(`💬 ${senderName}: ${msg.content.slice(0, 50)}${msg.content.length > 50 ? '…' : ''}`);
+                    setTimeout(() => setNotification(null), 4000);
+                }
+
                 setNewCount((c) => c + 1);
                 return [msg, ...prev];
             });
@@ -99,6 +127,7 @@ const DiscussionForum = ({ eventId, isOrganizer }) => {
         return () => {
             socket.emit('leaveEvent', eventId);
             socket.disconnect();
+            socketRef.current = null;
         };
     }, [eventId, loadMessages]);
 
@@ -226,6 +255,19 @@ const DiscussionForum = ({ eventId, isOrganizer }) => {
 
     return (
         <div className="discussion-forum">
+            {/* Notification toast */}
+            {notification && (
+                <div style={{
+                    position: 'fixed', top: '1rem', right: '1rem', zIndex: 9999,
+                    background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: '#fff',
+                    padding: '0.8rem 1.2rem', borderRadius: '12px',
+                    boxShadow: '0 8px 24px rgba(108,92,231,0.4)',
+                    fontSize: '0.9rem', maxWidth: '350px', animation: 'slideIn 0.3s ease',
+                    cursor: 'pointer',
+                }} onClick={() => setNotification(null)}>
+                    {notification}
+                </div>
+            )}
             <div className="forum-header">
                 <h3>💬 Discussion Forum</h3>
                 {newCount > 0 && (

@@ -235,6 +235,10 @@ export default function OrganizerEventDetail() {
                         onClick={() => setActiveSection('feedback')}>
                         📊 Feedback
                     </button>
+                    <button className={`filter-tab ${activeSection === 'attendance' ? 'active' : ''}`}
+                        onClick={() => setActiveSection('attendance')}>
+                        📋 Attendance ({registrations.filter(r => r.status === 'registered' && r.attended).length}/{registrations.filter(r => r.status === 'registered').length})
+                    </button>
                 </div>
 
                 {activeSection === 'participants' && (
@@ -337,6 +341,65 @@ export default function OrganizerEventDetail() {
                 {activeSection === 'feedback' && (
                     <FeedbackDashboard eventId={id} />
                 )}
+
+                {activeSection === 'attendance' && (() => {
+                    const registered = registrations.filter(r => r.status === 'registered');
+                    const attended = registered.filter(r => r.attended);
+                    const notAttended = registered.filter(r => !r.attended);
+                    return (
+                        <div>
+                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                                <div style={{ padding: '0.8rem 1.2rem', background: 'rgba(0,206,201,0.1)', borderRadius: '10px', flex: 1, minWidth: '140px' }}>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#00cec9' }}>{attended.length}</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#999' }}>Attended</div>
+                                </div>
+                                <div style={{ padding: '0.8rem 1.2rem', background: 'rgba(253,121,168,0.1)', borderRadius: '10px', flex: 1, minWidth: '140px' }}>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fd79a8' }}>{notAttended.length}</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#999' }}>Not Yet Attended</div>
+                                </div>
+                            </div>
+
+                            {notAttended.length > 0 && (
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <h4 style={{ marginBottom: '0.5rem', color: '#fd79a8' }}>⚠️ Not Yet Attended ({notAttended.length})</h4>
+                                    <table className="participants-table">
+                                        <thead><tr><th>Name</th><th>Email</th><th>Ticket ID</th><th>Registered</th><th>Action</th></tr></thead>
+                                        <tbody>
+                                            {notAttended.map(r => (
+                                                <tr key={r._id}>
+                                                    <td>{r.userId?.firstName} {r.userId?.lastName}</td>
+                                                    <td>{r.userId?.email}</td>
+                                                    <td><code>{r.ticketId}</code></td>
+                                                    <td>{new Date(r.createdAt).toLocaleDateString()}</td>
+                                                    <td><button className="btn btn-primary btn-sm" onClick={() => handleAttendance(r._id)}>Mark Present</button></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {attended.length > 0 && (
+                                <div>
+                                    <h4 style={{ marginBottom: '0.5rem', color: '#00cec9' }}>✅ Attended ({attended.length})</h4>
+                                    <table className="participants-table">
+                                        <thead><tr><th>Name</th><th>Email</th><th>Ticket ID</th><th>Checked In</th></tr></thead>
+                                        <tbody>
+                                            {attended.map(r => (
+                                                <tr key={r._id}>
+                                                    <td>{r.userId?.firstName} {r.userId?.lastName}</td>
+                                                    <td>{r.userId?.email}</td>
+                                                    <td><code>{r.ticketId}</code></td>
+                                                    <td>✅ {new Date(r.attendedAt).toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
             </div>
         </div>
     );

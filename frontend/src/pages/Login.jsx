@@ -17,7 +17,12 @@ const Login = () => {
 
         try {
             const user = await login(email, password);
-            navigate('/dashboard');
+            // Redirect participants who haven't completed onboarding
+            if (user.role === 'participant' && !user.onboardingCompleted) {
+                navigate('/onboarding');
+            } else {
+                navigate('/dashboard');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please try again.');
         } finally {

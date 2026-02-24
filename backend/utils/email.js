@@ -37,7 +37,7 @@ const getTransporter = async () => {
         });
         console.log('[Email] Using SMTP transport:', process.env.SMTP_HOST);
     } else {
-        // Fallback: Ethereal test account (emails viewable at ethereal.email)
+        // Fallback: Ethereal test account (emails viewable at ethereal.email, NOT delivered to real inboxes)
         const testAccount = await nodemailer.createTestAccount();
         transporter = nodemailer.createTransport({
             host: 'smtp.ethereal.email',
@@ -48,7 +48,9 @@ const getTransporter = async () => {
                 pass: testAccount.pass,
             },
         });
-        console.log('[Email] Using Ethereal test account:', testAccount.user);
+        console.warn('[Email] ⚠️ Using Ethereal test account — emails will NOT be delivered!');
+        console.warn('[Email] ⚠️ Set SENDGRID_API_KEY or SMTP_HOST+SMTP_USER env vars for real delivery.');
+        console.log('[Email] Ethereal account:', testAccount.user);
     }
     return transporter;
 };

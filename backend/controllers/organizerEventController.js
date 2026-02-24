@@ -198,13 +198,26 @@ const transitionStatus = (targetStatus) => async (req, res, next) => {
                             timestamp: new Date().toISOString(),
                         }],
                     };
+                    console.log('[Discord] Sending webhook for event:', event.name, 'to:', organizer.discordWebhookUrl);
                     fetch(organizer.discordWebhookUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload),
-                    }).catch(() => { }); // fire-and-forget
+                    }).then(resp => {
+                        if (resp.ok) {
+                            console.log('[Discord] Webhook sent successfully for:', event.name);
+                        } else {
+                            resp.text().then(body => console.error('[Discord] Webhook failed:', resp.status, body));
+                        }
+                    }).catch(err => {
+                        console.error('[Discord] Webhook error:', err.message);
+                    });
+                } else {
+                    console.log('[Discord] No webhook URL configured for organizer:', req.user.id);
                 }
-            } catch (_) { /* ignore webhook errors */ }
+            } catch (webhookErr) {
+                console.error('[Discord] Unexpected error:', webhookErr.message);
+            }
         }
 
         res.status(200).json({ success: true, message: `Event ${targetStatus} successfully`, data: { event } });
