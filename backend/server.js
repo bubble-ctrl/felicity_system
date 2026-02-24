@@ -1,66 +1,36 @@
-const dotenv = require('dotenv');
+const User = require('../models/User');
+const { ROLES } = require('../config/constants');
 
-// Load env vars BEFORE anything else
-dotenv.config();
+const seedAdmin = async () => {
+    console.log('🟡 Running seedAdmin...');
 
-const http = require('http');
-const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
-const app = require('./app');
-const connectDB = require('./config/db');
+    try {
+        console.log('🟡 Checking for existing admin...');
 
-const PORT = process.env.PORT || 5000;
+        const existingAdmin = await User.findOne({ role: ROLES.ADMIN });
 
-const startServer = async () => {
-    // Connect to MongoDB
-    await connectDB();
-
-    // Create HTTP server and attach Socket.IO
-    const httpServer = http.createServer(app);
-    const io = new Server(httpServer, {
-        cors: {
-            origin: '*',
-            methods: ['GET', 'POST'],
-        },
-    });
-
-    // Make io accessible in controllers via req.app.get('io')
-    app.set('io', io);
-
-    // Socket.IO authentication middleware
-    io.use((socket, next) => {
-        const token = socket.handshake.auth.token;
-        if (!token) return next(new Error('Authentication required'));
-        try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            socket.user = decoded;
-            next();
-        } catch (err) {
-            next(new Error('Invalid token'));
+        if (existingAdmin) {
+            console.log('⚠️ Admin already exists:', existingAdmin.email);
+            return;
         }
-    });
 
-    // Socket.IO connection handling
-    io.on('connection', (socket) => {
-        console.log(`🔌 Socket connected: ${socket.user.id} (${socket.user.role})`);
+        console.log('🟡 No admin found. Creating one...');
 
-        // Join an event room for real-time messages
-        socket.on('joinEvent', (eventId) => {
-            socket.join(`event:${eventId}`);
+        console.log('Using email:', process.env.ADMIN_EMAIL);
+        console.log('Using password:', process.env.ADMIN_PASSWORD ? 'SET' : 'NOT SET');
+
+        const admin = await User.create({
+            firstName: 'System',
+            lastName: 'Admin',
+            email: process.env.ADMIN_EMAIL,
+            password: process.env.ADMIN_PASSWORD,
+            role: ROLES.ADMIN,
         });
 
-        socket.on('leaveEvent', (eventId) => {
-            socket.leave(`event:${eventId}`);
-        });
-
-        socket.on('disconnect', () => {
-            // Cleanup handled automatically by Socket.IO
-        });
-    });
-
-    httpServer.listen(PORT, () => {
-        console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-    });
+        console.log('✅ Admin created:', admin.email);
+    } catch (err) {
+        console.error('❌ seedAdmin error:', err);
+    }
 };
 
-startServer();
+module.exports = seedAdmin;
