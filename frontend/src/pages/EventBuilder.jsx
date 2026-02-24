@@ -16,6 +16,7 @@ export default function EventBuilder() {
     const [loading, setLoading] = useState(isEdit);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [eventStatus, setEventStatus] = useState('draft');
 
     const [form, setForm] = useState({
         name: '', description: '', type: 'normal', eligibility: 'open',
@@ -53,6 +54,7 @@ export default function EventBuilder() {
                     setVariants(e.merchandiseDetails.variants || []);
                     setPurchaseLimit(e.merchandiseDetails.purchaseLimit || 1);
                 }
+                setEventStatus(e.status || 'draft');
             }).catch(() => setError('Failed to load event'))
                 .finally(() => setLoading(false));
         }
@@ -278,12 +280,20 @@ export default function EventBuilder() {
 
                 {/* Actions */}
                 <div className="builder-actions">
-                    <button className="btn btn-outline" onClick={() => handleSave(false)} disabled={saving}>
-                        {saving ? 'Saving...' : 'Save as Draft'}
-                    </button>
-                    <button className="btn btn-primary" onClick={() => handleSave(true)} disabled={saving}>
-                        {saving ? 'Saving...' : 'Save & Publish'}
-                    </button>
+                    {isEdit && eventStatus !== 'draft' ? (
+                        <button className="btn btn-primary" onClick={() => handleSave(false)} disabled={saving}>
+                            {saving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    ) : (
+                        <>
+                            <button className="btn btn-outline" onClick={() => handleSave(false)} disabled={saving}>
+                                {saving ? 'Saving...' : 'Save as Draft'}
+                            </button>
+                            <button className="btn btn-primary" onClick={() => handleSave(true)} disabled={saving}>
+                                {saving ? 'Saving...' : 'Save & Publish'}
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

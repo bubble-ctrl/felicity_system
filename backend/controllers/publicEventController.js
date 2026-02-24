@@ -52,11 +52,19 @@ const browseEvents = async (req, res, next) => {
         // --- Fuzzy / partial search on event name + organizer name ---
         let organizerIds = null;
         if (search) {
-            // Build fuzzy regex pattern: "hack" → "h.*a.*c.*k" for partial matching
+            // Build multiple matching strategies:
+            // 1. Normal substring match
             const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const normalRegex = new RegExp(escaped, 'i');
+
+            // 2. Character-level fuzzy: "hack" → "h.*a.*c.*k"
             const fuzzyPattern = escaped.split('').join('.*');
             const fuzzyRegex = new RegExp(fuzzyPattern, 'i');
-            const normalRegex = new RegExp(escaped, 'i');
+
+            // 3. Typo-tolerant: allow one extra/substituted character between each pair
+            // "hacathon" matches "hackathon" because "hac.?kathon" allows a char between c and k
+            const typoPattern = escaped.split('').join('.?');
+            const typoRegex = new RegExp(typoPattern, 'i');
 
             // Search organizers by name
             const matchingOrganizers = await User.find({
@@ -68,7 +76,9 @@ const browseEvents = async (req, res, next) => {
             filter.$or = [
                 { name: { $regex: normalRegex } },
                 { name: { $regex: fuzzyRegex } },
+                { name: { $regex: typoRegex } },
                 { description: { $regex: normalRegex } },
+                { tags: { $regex: normalRegex } },
                 ...(organizerIds.length ? [{ organizerId: { $in: organizerIds } }] : []),
             ];
         }

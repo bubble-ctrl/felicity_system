@@ -61,6 +61,10 @@ const sendRegistrationEmail = async ({ to, eventName, ticketId, qrCode }) => {
         const t = await getTransporter();
         const fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER || '"Felicity Events" <noreply@felicity.iiit.ac.in>';
 
+        // Convert data URI to buffer for CID attachment
+        const qrBase64 = qrCode.replace(/^data:image\/\w+;base64,/, '');
+        const qrBuffer = Buffer.from(qrBase64, 'base64');
+
         const info = await t.sendMail({
             from: fromEmail,
             to,
@@ -71,11 +75,16 @@ const sendRegistrationEmail = async ({ to, eventName, ticketId, qrCode }) => {
                     <p>You have successfully registered for <strong>${eventName}</strong>.</p>
                     <p><strong>Ticket ID:</strong> ${ticketId}</p>
                     <p>Show this QR code at the venue:</p>
-                    <img src="${qrCode}" alt="QR Code" style="width:200px;height:200px;" />
+                    <img src="cid:qrcode" alt="QR Code" style="width:200px;height:200px;" />
                     <hr style="border:none;border-top:1px solid #eee;margin:24px 0;" />
                     <p style="color:#888;font-size:12px;">Felicity Event Management System</p>
                 </div>
             `,
+            attachments: [{
+                filename: 'qrcode.png',
+                content: qrBuffer,
+                cid: 'qrcode',
+            }],
         });
         // Log Ethereal preview URL if available
         const previewUrl = nodemailer.getTestMessageUrl(info);

@@ -44,11 +44,12 @@ const DiscussionForum = ({ eventId, isOrganizer }) => {
         socket.on('newMessage', (msg) => {
             setMessages((prev) => {
                 if (msg.parentId) {
-                    // It's a reply — update replies state
-                    setReplies((pr) => ({
-                        ...pr,
-                        [msg.parentId]: [...(pr[msg.parentId] || []), msg],
-                    }));
+                    // It's a reply — update replies state (deduplicate)
+                    setReplies((pr) => {
+                        const existing = pr[msg.parentId] || [];
+                        if (existing.some((r) => r._id === msg._id)) return pr;
+                        return { ...pr, [msg.parentId]: [...existing, msg] };
+                    });
                     // Update reply count in parent
                     return prev.map((m) =>
                         m._id === msg.parentId ? { ...m, replyCount: (m.replyCount || 0) + 1 } : m
@@ -123,12 +124,11 @@ const DiscussionForum = ({ eventId, isOrganizer }) => {
     const toggleThread = async (msgId) => {
         if (openThread === msgId) { setOpenThread(null); return; }
         setOpenThread(msgId);
-        if (!replies[msgId]) {
-            try {
-                const { data } = await messageAPI.getReplies(msgId);
-                setReplies((prev) => ({ ...prev, [msgId]: data.data.replies }));
-            } catch (e) { /* ignore */ }
-        }
+        // Always re-fetch replies from API to avoid duplication
+        try {
+            const { data } = await messageAPI.getReplies(msgId);
+            setReplies((prev) => ({ ...prev, [msgId]: data.data.replies }));
+        } catch (e) { /* ignore */ }
     };
 
     // Delete message

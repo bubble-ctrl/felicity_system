@@ -118,8 +118,9 @@ const ManageOrganizers = () => {
     const handleApproveReset = async (requestId) => {
         try {
             setProcessingReset(requestId);
-            const res = await adminAPI.approvePasswordReset(requestId);
-            setResetCredentials(res.data.data.credentials);
+            const res = await adminAPI.approvePasswordReset(requestId, {});
+            const creds = res.data.data.credentials;
+            setResetCredentials({ email: creds.email, password: creds.newPassword });
             showMessage('success', 'Password reset approved! New credentials generated.');
             fetchResetRequests();
         } catch (err) {

@@ -34,8 +34,13 @@ const Register = () => {
         setLoading(true);
         try {
             const { confirmPassword, ...submitData } = formData;
-            await register(submitData);
-            navigate('/dashboard');
+            const registeredUser = await register(submitData);
+            // Redirect participants to onboarding; organizers/admins go to dashboard
+            if (registeredUser.role === 'participant') {
+                navigate('/onboarding');
+            } else {
+                navigate('/dashboard');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed. Please try again.');
         } finally {

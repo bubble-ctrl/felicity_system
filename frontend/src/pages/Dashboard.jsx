@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { organizerEventAPI, registrationAPI } from '../services/api';
+import { organizerEventAPI, registrationAPI, adminAPI } from '../services/api';
 
 const Dashboard = () => {
     const { user } = useAuth();
@@ -52,8 +52,8 @@ const ParticipantDashboard = ({ user }) => {
             </div>
             <div className="dashboard-grid">
                 <DashCard icon="📅" title="Upcoming" stat={upcoming.length} desc="Upcoming events" to="/my-events?tab=upcoming" />
-                <DashCard icon="🎫" title="All Tickets" stat={active.length} desc="Active registrations" to="/my-events" />
-                <DashCard icon="⏳" title="Pending" stat={pending.length} desc="Awaiting approval" to="/my-events" />
+                <DashCard icon="🎟️" title="Registrations" stat={active.length} desc="Active registrations" to="/my-events?tab=normal" />
+                <DashCard icon="⏳" title="Pending" stat={pending.length} desc="Awaiting approval" to="/my-events?tab=merchandise" />
                 <DashCard icon="✅" title="Completed" stat={completed.length} desc="Events attended" to="/my-events?tab=completed" />
             </div>
             <div className="dashboard-info">
@@ -117,31 +117,84 @@ const OrganizerDashboard = ({ user }) => {
                     </div>
                 </div>
             )}
+
+            {/* Upcoming Events */}
+            {(() => {
+                const upcoming = events.filter((e) => e.status === 'published' && e.startDate && new Date(e.startDate) > new Date());
+                return upcoming.length > 0 ? (
+                    <div className="dashboard-info">
+                        <h3>📅 Upcoming Events</h3>
+                        <div className="trending-cards">
+                            {upcoming.slice(0, 6).map((e) => (
+                                <Link key={e._id} to={`/organizer/events/${e._id}`} className="trending-card">
+                                    <h4>{e.name}</h4>
+                                    <span className="trending-views">Starts {new Date(e.startDate).toLocaleDateString()}</span>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                ) : null;
+            })()}
+
+            {/* Completed Events */}
+            {(() => {
+                const completedEvents = events.filter((e) => e.status === 'completed');
+                return completedEvents.length > 0 ? (
+                    <div className="dashboard-info">
+                        <h3>✅ Completed Events</h3>
+                        <div className="trending-cards">
+                            {completedEvents.slice(0, 6).map((e) => (
+                                <Link key={e._id} to={`/organizer/events/${e._id}`} className="trending-card">
+                                    <h4>{e.name}</h4>
+                                    <div className="trending-views">
+                                        {e.registrationCount || 0} registrations · {e.attendanceCount || 0} attended · ₹{e.revenue || 0}
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                ) : null;
+            })()}
         </div>
     );
 };
 
 // ---- Admin Dashboard ----
-const AdminDashboard = ({ user }) => (
-    <div className="dashboard-content">
-        <div className="dashboard-welcome">
-            <h1>Admin Panel 🛡️</h1>
-            <p>Manage clubs, organizers, and system settings.</p>
-        </div>
-        <div className="dashboard-grid">
-            <DashCard icon="🏢" title="Organizers" stat="—" desc="Active clubs & organizers" to="/manage-organizers" />
-            <DashCard icon="👥" title="Participants" stat="—" desc="Registered users" />
-            <DashCard icon="📅" title="Events" stat="—" desc="Total events created" />
-            <DashCard icon="🔑" title="System" stat="—" desc="System management" />
-        </div>
-        <div className="dashboard-info">
-            <h3>Admin Info</h3>
-            <div className="info-grid">
-                <div><strong>Email:</strong> {user.email}</div>
-                <div><strong>Role:</strong> System Administrator</div>
+const AdminDashboard = ({ user }) => {
+    const [stats, setStats] = useState({ organizers: 0, pendingResets: 0 });
+    const fetched = useRef(false);
+
+    useEffect(() => {
+        if (fetched.current) return;
+        fetched.current = true;
+        adminAPI.getAllOrganizers().then(({ data }) => {
+            setStats((prev) => ({ ...prev, organizers: data.data.organizers.length }));
+        }).catch(() => { });
+        adminAPI.getPasswordResetRequests().then(({ data }) => {
+            const pending = data.data.requests.filter((r) => r.status === 'pending').length;
+            setStats((prev) => ({ ...prev, pendingResets: pending }));
+        }).catch(() => { });
+    }, []);
+
+    return (
+        <div className="dashboard-content">
+            <div className="dashboard-welcome">
+                <h1>Admin Panel 🛡️</h1>
+                <p>Manage clubs, organizers, and system settings.</p>
+            </div>
+            <div className="dashboard-grid">
+                <DashCard icon="🏢" title="Organizers" stat={stats.organizers} desc="Active clubs & organizers" to="/manage-organizers" />
+                <DashCard icon="🔑" title="Password Resets" stat={stats.pendingResets} desc="Pending requests" to="/manage-organizers?tab=password-resets" />
+            </div>
+            <div className="dashboard-info">
+                <h3>Admin Info</h3>
+                <div className="info-grid">
+                    <div><strong>Email:</strong> {user.email}</div>
+                    <div><strong>Role:</strong> System Administrator</div>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 export default Dashboard;
