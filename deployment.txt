@@ -1,0 +1,2 @@
+Frontend URL: <your-frontend-url>
+Backend API URL: <your-backend-api-url>
