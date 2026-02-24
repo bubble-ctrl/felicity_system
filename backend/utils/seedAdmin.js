@@ -1,10 +1,5 @@
-import { join } from 'path';
-
-const User = require(join(__dirname, '../models/User'));
-const { ROLES } = require(path.join(__dirname, '../config/constants'));
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@felicity.iiit.ac.in';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
+const User = require('../models/User');
+const { ROLES } = require('../config/constants');
 
 const seedAdmin = async () => {
     try {
@@ -18,8 +13,8 @@ const seedAdmin = async () => {
         const admin = await User.create({
             firstName: 'System',
             lastName: 'Admin',
-            email: ADMIN_EMAIL,
-            password: ADMIN_PASSWORD,
+            email: process.env.ADMIN_EMAIL || 'admin@felicity.iiit.ac.in',
+            password: process.env.ADMIN_PASSWORD || 'Admin@123',
             role: ROLES.ADMIN,
         });
 
@@ -30,4 +25,4 @@ const seedAdmin = async () => {
     }
 };
 
-export default seedAdmin;
+module.exports = seedAdmin;
