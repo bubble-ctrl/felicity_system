@@ -34,7 +34,7 @@ const DiscussionForum = ({ eventId, isOrganizer }) => {
         loadMessages();
 
         const token = localStorage.getItem('token');
-        const socket = io('http://localhost:5000', { auth: { token } });
+        const socket = io('https://felicity-backend-vqz2.onrender.com', { auth: { token } });
         socketRef.current = socket;
 
         socket.on('connect', () => {
